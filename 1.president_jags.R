@@ -1,8 +1,7 @@
 ###################################################
 ## President approval rating
 ###################################################
-load("temp.RData")
-
+## df <- read_excel("president.xlsx")
 ###################################################
 ## JAGS
 ###################################################
@@ -18,69 +17,11 @@ require(dplyr)
 customGreen0 = "#DeF7E9"
 customGreen = "#71CA97"
 customRed = "#ff7f7f"
-###################################################
-## merge into df
-###################################################
-df <- left_join(df.president, df.detail.expanded, by ="index")
-
-## is there any missing in start.date?
-cat("missing data is ", which(is.na(df$start.date)),"\n")
-
-df <- df %>%
-    filter(!is.na(start.date))%>%
-    arrange(start.date)
-
 
 ##############################################
-## 1. data prep
+## type of approval data 
 ##############################################
-## date
-df$date <- as.Date(as.character(df$start.date))
-df$start.date <- as.Date(df$start.date)
-df$end.date <- as.Date(df$end.date)
-df$end.date[which(is.na(df$end.date))] <- df$start.date[which(is.na(df$end.date))]
-## start to end repeat data
-df.long <- df %>%
-    group_by(index) %>%
-    dplyr::summarize(start=min(start.date),end=max(end.date))
-df.long <- df.long %>%
-    rowwise() %>%
-    do(data.frame(index=.$index, day=seq(.$start,.$end,by="1 day")))
-df.long.full <- left_join(df.long, df, by="index")
 
-## y.good, y.bad, 
-y.good.filter <- function(df){
-    y.great <- df[,"Great"]
-    y.good <- df[,"Good"]
-    y.GG <- df[, "GG"]
-    y.out <- y.GG
-    y.sum <- y.great + y.good
-    y.out[which(is.na(y.GG)),] <- y.sum[which(is.na(y.GG)),]
-    return(pull(y.out))
-}
-## y.good, y.bad, 
-y.bad.filter <- function(df){
-    y.bad <- df[,"Bad"]
-    y.horrible <- df[,"Horrible"]
-    y.BH <- df[, "BH"]
-    y.out <- y.BH
-    y.sum <- y.bad + y.horrible
-    y.out[which(is.na(y.BH)),] <- y.sum[which(is.na(y.BH)),]
-    return(pull(y.out))
-}
-
-df <- df.long.full %>% arrange(start.date)
-## Great + Good or GG
-df$y1 <- y.good.filter(df)
-df$y2 <- y.bad.filter(df)
-df$y3 <- df[,"DK"]
-df$y4 <- df$y1 - df$y2
-
-
-##############################################
-## 2. model fitting
-##############################################
-## President Model
 candidate.list <- c("y1", "y2", "y3", "y4")
 n.candidate <- length(candidate.list)
 candidate.names <- c("good", "bad", "dk", "net_good")
@@ -88,6 +29,9 @@ candidate.korea <- c("긍정평가", "부정평가", "모름", "순긍정평가"
 tune = 1
 sigma.tune <- 1
 
+##############################################
+## Loop
+##############################################
 for(candidate in 1:n.candidate){
     model.name <- paste0("president_approve_", candidate.korea[candidate])
     subdata <- df[!is.na(unlist(df[, candidate.list[candidate]])), ]
@@ -103,10 +47,9 @@ for(candidate in 1:n.candidate){
         as.data.frame() %>% 
         arrange(house.name)
         
-    ## report the source number changes
+    ## report 
     cat("\t", model.name, " House number is ", n.house, "\n")
-    
-    
+     
     subdata$y <- as.numeric(unlist(subdata[, candidate.list[candidate]]))
     subdata$date <- as.Date(as.character(subdata$start.date))
     Date <- sort(unique(subdata$date))
@@ -142,12 +85,12 @@ for(candidate in 1:n.candidate){
 
     cat("\t", model.name, " model is ready to run!\n")
     
-    model <- jags.model("~/Dropbox/MBC/Code/jags/mbc_house.bug",
+    model <- jags.model("mbc_house.bug",
                         data = foo, n.chains = 5, n.adapt=1000)
     
     output1 <- coda.samples(model=model,
-                            variable.names=c("alpha","house","sigma", "new.alpha"),
-                            n.iter=5000, thin=5)
+                            variable.names=c("alpha","house","sigma"),
+                            n.iter=1000, thin=5)
     output <- list.rbind(output1)
     coef.names <- colnames(output)
 

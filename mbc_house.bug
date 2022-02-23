@@ -23,5 +23,5 @@ model{
  }
 
  ## what would happen if the election happens tomorrow?
- ## new.alpha ~ dnorm(alpha[n.period], tau)T(0,100)
+ new.alpha ~ dnorm(alpha[n.period], tau)
 }
