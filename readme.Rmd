@@ -18,7 +18,9 @@ knitr::opts_chunk$set(
 이 깃허브는 MBC 여론조사를 조사하다(http://poll-mbc.co.kr/)에서 사용된 코드를 공개하는 것을 목적으로 합니다. 
 
 ```{r}
-githubURL <- "https://github.com/jongheepark/poll-MBC/blob/main/temp.RData"
-load(url(githubURL))
+ githubURL <- ("https://github.com/jongheepark/poll-MBC/blob/a6601ef2b174aab6deb25718c52dcd9fe6d9cf49/president.rds")
+x <- RCurl::getURL(githubURL)
+writeLines(x, tmp <- tempfile())
+y <- readRDS(curl(githubURL))
 ```
 
