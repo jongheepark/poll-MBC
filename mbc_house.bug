@@ -1,0 +1,27 @@
+model{
+ ## measurement model
+ for(i in 1:N.obs){
+       mu[i] <- house[house.id[i]] + alpha[numeric.date[i]]
+       y[i] ~ dnorm(mu[i], prec[numeric.date[i]]) ## for fast coding. Otherwise T(0,100)
+ }
+
+ ## transition model (aka random walk prior)
+ for(t in 2:n.period){
+        mu.alpha[t] <- alpha[t-1]
+        alpha[t] ~ dnorm(mu.alpha[t], tau)
+ }
+ 
+ tau <- 1/pow(sigma, 2)   ## deterministic transform to precision
+ sigma ~ dunif(sigma.low, sigma.high)    ## uniform prior on standard deviation
+ 
+ ## initialization of daily track
+ alpha[1] ~ dunif(a01, a02)
+
+ for(i in 1:n.house){          
+ ## standard deviation of 1
+   house[i] ~ dnorm(0, 1)
+ }
+
+ ## what would happen if the election happens tomorrow?
+ ## new.alpha ~ dnorm(alpha[n.period], tau)T(0,100)
+}
