@@ -4,9 +4,9 @@
 # Poll-MBC
 
 ![20대 대선 주자별 선호도](poll2.png) 이 깃허브는 MBC 여론조사를
-조사하다(<http://poll-mbc.co.kr/)에서> 사용된 코드를 설명하고 공개하는 것을 목적으로 합니다.
+조사하다(<http://poll-mbc.co.kr/>) 에서 사용된 코드를 설명하고 공개하는 것을 목적으로 합니다.
 이 코드를 돌리기 위해서는 jags(Just Another Gibbs Sampler,
-<https://mcmc-jags.sourceforge.io)가> 설치되어 있어야 합니다.
+<https://mcmc-jags.sourceforge.io>) 가 설치되어 있어야 합니다.
 
 ## Load packages
 
