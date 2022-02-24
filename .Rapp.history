@@ -1,0 +1,198 @@
+load("/Users/park/GitHub/pollMBC/temp.RData")
+ls()
+load("/Users/park/GitHub/pollMBC/temp.RData")
+####################################################
+## JAGS#
+####################################################
+require(rjags)#
+require(rlist)#
+require(jsonlite)#
+require(haven) ## for as_factor#
+require(forcats) ## for fct_reorder#
+require(tidyquant)#
+require(ggplot2)#
+require(dplyr)#
+#
+customGreen0 = "#DeF7E9"#
+customGreen = "#71CA97"#
+customRed = "#ff7f7f"#
+####################################################
+## merge into df#
+####################################################
+df <- left_join(df.president, df.detail.expanded, by ="index")#
+#
+## is there any missing in start.date?#
+cat("missing data is ", which(is.na(df$start.date)),"\n")#
+#
+df <- df %>%#
+    filter(!is.na(start.date))%>%#
+    arrange(start.date)#
+###############################################
+## 1. data prep#
+###############################################
+## date#
+df$date <- as.Date(as.character(df$start.date))#
+df$start.date <- as.Date(df$start.date)#
+df$end.date <- as.Date(df$end.date)#
+df$end.date[which(is.na(df$end.date))] <- df$start.date[which(is.na(df$end.date))]#
+## start to end repeat data#
+df.long <- df %>%#
+    group_by(index) %>%#
+    dplyr::summarize(start=min(start.date),end=max(end.date))#
+df.long <- df.long %>%#
+    rowwise() %>%#
+    do(data.frame(index=.$index, day=seq(.$start,.$end,by="1 day")))#
+df.long.full <- left_join(df.long, df, by="index")#
+#
+## y.good, y.bad, #
+y.good.filter <- function(df){#
+    y.great <- df[,"Great"]#
+    y.good <- df[,"Good"]#
+    y.GG <- df[, "GG"]#
+    y.out <- y.GG#
+    y.sum <- y.great + y.good#
+    y.out[which(is.na(y.GG)),] <- y.sum[which(is.na(y.GG)),]#
+    return(pull(y.out))#
+}#
+## y.good, y.bad, #
+y.bad.filter <- function(df){#
+    y.bad <- df[,"Bad"]#
+    y.horrible <- df[,"Horrible"]#
+    y.BH <- df[, "BH"]#
+    y.out <- y.BH#
+    y.sum <- y.bad + y.horrible#
+    y.out[which(is.na(y.BH)),] <- y.sum[which(is.na(y.BH)),]#
+    return(pull(y.out))#
+}#
+#
+df <- df.long.full %>% arrange(start.date)#
+## Great + Good or GG#
+df$y1 <- y.good.filter(df)#
+df$y2 <- y.bad.filter(df)#
+df$y3 <- df[,"DK"]#
+df$y4 <- df$y1 - df$y2
+df
+save(df, file="president.rds")
+getwd()
+df <- readRDS("president.rds")
+df <- readRDS(file="president.rds")
+readRDS
+saveRDS(df, file = "president.rds")
+df <- readRDS(file="president.rds")
+df
+df <- readRDS(file="president.rds")
+ls()
+###############################################
+## 2. model fitting#
+###############################################
+## President Model#
+candidate.list <- c("y1", "y2", "y3", "y4")#
+n.candidate <- length(candidate.list)#
+candidate.names <- c("good", "bad", "dk", "net_good")#
+candidate.korea <- c("긍정평가", "부정평가", "모름", "순긍정평가")#
+tune = 1#
+sigma.tune <- 1
+model.name <- paste0("president_approve_", candidate.korea[candidate])#
+    subdata <- df[!is.na(unlist(df[, candidate.list[candidate]])), ]#
+#
+    ## house rename#
+    subdata$house.new <- subdata$house_new#
+    subdata$house.new <- sapply(subdata$house.new,#
+                                function(x){as.factor(toString(x))})#
+    n.house <- length(unique(subdata$house.new))#
+    house.name <- unique(subdata$house.new)#
+    house.id <- as.numeric(subdata$house.new)#
+    house.freq <- table(subdata$house.new) %>% #
+        as.data.frame() %>% #
+        arrange(house.name)#
+    ## report the source number changes#
+    cat("\t", model.name, " House number is ", n.house, "\n")
+candidate
+candidate=1
+model.name <- paste0("president_approve_", candidate.korea[candidate])#
+    subdata <- df[!is.na(unlist(df[, candidate.list[candidate]])), ]#
+#
+    ## house rename#
+    subdata$house.new <- subdata$house_new#
+    subdata$house.new <- sapply(subdata$house.new,#
+                                function(x){as.factor(toString(x))})#
+    n.house <- length(unique(subdata$house.new))#
+    house.name <- unique(subdata$house.new)#
+    house.id <- as.numeric(subdata$house.new)#
+    house.freq <- table(subdata$house.new) %>% #
+        as.data.frame() %>% #
+        arrange(house.name)#
+    ## report the source number changes#
+    cat("\t", model.name, " House number is ", n.house, "\n")
+subdata$y <- as.numeric(unlist(subdata[, candidate.list[candidate]]))#
+    subdata$date <- as.Date(as.character(subdata$start.date))#
+    Date <- sort(unique(subdata$date))#
+    numeric.date <- as.numeric(as.factor(as.numeric(subdata$date) -#
+                                     sort(as.numeric(subdata$date))[1] + 1))#
+#
+    n.period <- length(Date)#
+    N.obs <- length(subdata$y)#
+    df.jags <- data.frame(y = subdata$y, date = subdata$date,#
+                          size = subdata$response)
+df.jags
+df.jags$Date <- numeric.date#
+    df.jags <- df.jags[order(df.jags$Date),]#
+    df.jags$sd <- sd(df.jags$y)#
+    df.jags$var <- var(df.jags$y)#
+    df.jags$lo <- df.jags$y - 1.96*df.jags$sd[1]#
+    df.jags$up <- df.jags$y + 1.96*df.jags$sd[1]#
+    mean.y <- sapply(1:n.period, function(i){mean(df.jags$y[df.jags$Date == i])})#
+    survey.count <- sapply(1:n.period, function(i){length(df.jags$y[df.jags$Date == i])})#
+    var.y.raw <- (df.jags$y^2)/df.jags$size#
+    var.y <- sapply(1:n.period, function(j){mean(var.y.raw[df.jags$Date == j], na.rm=TRUE)})#
+    var.y <-  ifelse(is.na(var.y)|var.y==0, mean(var.y, na.rm=TRUE), var.y)#
+    sigma.upper <- sd(df.jags$y)/sigma.tune#
+    ## plot(mean.y)#
+    a01 <- mean.y[1] - tune*1.96*df.jags$sd[1]#
+    a02 <- min(100, mean.y[1] + tune*1.96*df.jags$sd[1])
+foo <- list(y=df.jags$y, prec=1/var.y, numeric.date=numeric.date,#
+                house.id=house.id, N.obs = N.obs, n.period=n.period, n.house=n.house,#
+                sigma.low = sigma.low, sigma.high = sigma.high, a01 = a01, a02 = a02,#
+                alpha= rep(NA, n.period), new.alpha = NA)#
+    cat("\t", model.name, " model is ready to run!\n")#
+    model <- jags.model("~/Dropbox/MBC/Code/jags/mbc_house.bug",#
+                        data = foo, n.chains = 5, n.adapt=1000)#
+    output1 <- coda.samples(model=model,#
+                            variable.names=c("alpha","house","sigma", "new.alpha"),#
+                            n.iter=5000, thin=5)#
+    output <- list.rbind(output1)#
+    coef.names <- colnames(output)
+sigma.low <- 0; sigma.high <- 1
+foo <- list(y=df.jags$y, prec=1/var.y, numeric.date=numeric.date,#
+                house.id=house.id, N.obs = N.obs, n.period=n.period, n.house=n.house,#
+                sigma.low = sigma.low, sigma.high = sigma.high, a01 = a01, a02 = a02,#
+                alpha= rep(NA, n.period), new.alpha = NA)#
+    cat("\t", model.name, " model is ready to run!\n")#
+    model <- jags.model("mbc_house.bug",#
+                        data = foo, n.chains = 5, n.adapt=1000)
+foo <- list(y=df.jags$y, prec=1/var.y, numeric.date=numeric.date,#
+                house.id=house.id, N.obs = N.obs, n.period=n.period, n.house=n.house,#
+                sigma.low = sigma.low, sigma.high = sigma.high, a01 = a01, a02 = a02,#
+                alpha= rep(NA, n.period))#
+    cat("\t", model.name, " model is ready to run!\n")#
+    model <- jags.model("mbc_house.bug",#
+                        data = foo, n.chains = 5, n.adapt=1000)
+output1 <- coda.samples(model=model,#
+                            variable.names=c("alpha","house","sigma"),#
+                            n.iter=5000, thin=5)#
+    output <- list.rbind(output1)#
+    coef.names <- colnames(output)
+saveRDS(df, file = "president.RData")
+save(df, file = "president.RData")
+library("xlsx")#
+write.xlsx(df, file = "president.xlsx", sheetName = "Sheet1", #
+  col.names = TRUE, row.names = TRUE, append = FALSE)
+df
+write.csv(df, file="president.csv")
+president <- read.csv("president.csv")
+write_csv(df, file="president.csv")
+library("xlsx")
+write.xlsx(df, file = "president.xlsx")
+write.xlsx2(df, file = "president.xlsx")
+library(readxl)#
+xlsx_example <- readxl_example("https://github.com/jongheepark/poll-MBC/blob/3a446494f7cac2113eab452e9f1af9a66dd26e54/president.xlsx")
